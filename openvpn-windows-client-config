@@ -1,0 +1,19 @@
+#ovpn config file
+client
+proto udp
+remote openvpn.lyas.dev
+port 1194
+data-ciphers AES-256-GCM
+auth-nocache
+remote-cert-tls server
+mssfix
+dev tun
+nobind
+ping 15
+persist-key
+persist-tun
+cryptoapicert "SUBJ:<PUT YOUR COMMON NAME HERE>"
+key-direction 1
+<ca>
+<PASTE YOUR BASE64 CA HERE>
+</ca>
