@@ -1,0 +1,81 @@
+#put your CA ID here
+caid=<CAIDSTRING>
+
+#enable ip forwarding
+echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf
+
+#install some necessary packages
+apt -y install openvpn wget openssl
+
+#generate Diffie-Hellman parameters
+openssl dhparam -out /etc/openvpn/dh2048.pem 2048
+
+#download root CA, convert it to pem, and place it where the config expects it
+wget https://certs.pkiaas.io/$caid/OpenVPNDemo.crt -O /tmp/ca.crt && openssl x509 -in /tmp/ca.crt -inform der -outform pem -out /etc/openvpn/ca.crt
+
+#create hourly cron job to update crl
+cat << EOF > /etc/cron.hourly/openvpn-crl
+#!/bin/sh
+
+/usr/bin/rm /tmp/ca.crl 2> /dev/null
+/usr/bin/wget http://crl.pkiaas.io/$caid/OpenVPNDemo.crl -O /tmp/ca.crl 2> /dev/null
+/usr/bin/openssl crl -inform der -in /tmp/ca.crl -outform pem -out /etc/openvpn/ca.crl > /dev/null
+EOF
+
+#make sure cron script is executable
+chmod 755 /etc/cron.hourly/openvpn-crl
+
+#run cron script now to download crl
+/etc/cron.hourly/openvpn-crl
+
+#generate a private key, place it where the config expects it, and output a CSR for us to sign
+openssl req -newkey rsa:2048 -keyout /etc/openvpn/server.key -nodes -subj "/CN=openvpn.lyas.dev" 2> /dev/null
+
+#make sure only root can read the private key
+chmod 400 /etc/openvpn/server.key
+
+#place the signed openvpn server certificate where the config expects it
+cat << EOF > /etc/openvpn/server.crt
+<PASTE YOUR SERVER CERTIFICATE HERE>
+EOF
+
+#write the openvpn server config
+cat << EOF > /etc/openvpn/server.conf
+proto udp
+port 1194
+dev tun
+mode server
+tls-server
+server 192.168.60.0 255.255.255.0
+client-to-client
+client-config-dir /etc/openvpn/client
+ca ca.crt
+cipher AES-256-GCM
+ncp-ciphers AES-256-GCM:AES-256-CBC:AES-128-GCM:AES-128-CBC
+cert server.crt
+key server.key
+dh dh2048.pem
+crl-verify /etc/openvpn/ca.crl
+script-security 2
+key-direction 0
+persist-key
+persist-tun
+persist-local-ip
+persist-remote-ip
+keepalive 10 60
+user nobody
+group nogroup
+log-append /var/log/openvpn/vpn.log
+status /var/log/openvpn/vpn.status
+verb 1
+EOF
+
+#start the openvpn server
+systemctl restart openvpn@server
+
+#check the status of the openvpn server
+systemctl status openvpn@server
+
+#make sure the openvpn server starts at boot
+systemctl enable openvpn@server
