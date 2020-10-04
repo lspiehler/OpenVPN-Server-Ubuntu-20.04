@@ -1,0 +1,17 @@
+#ovpn config file
+client
+proto udp
+remote <PUT YOUR OPENVPN SERVER HERE>
+port 1194
+data-ciphers AES-256-GCM
+auth-nocache
+remote-cert-tls server
+dev tun
+nobind
+ping 15
+persist-key
+persist-tun
+key-direction 1
+<ca>
+<PASTE YOUR BASE64 CA HERE>
+</ca>
