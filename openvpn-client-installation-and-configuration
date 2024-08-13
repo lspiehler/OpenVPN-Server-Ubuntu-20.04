@@ -1,0 +1,46 @@
+#install OpenVPN using these instructions
+#https://community.openvpn.net/openvpn/wiki/OpenvpnSoftwareRepos
+
+#download ca
+wget https://certs.pkiaas.io/foCXVyqkHc/LoxicomOpenVPNRootCA.crt -O /tmp/ca.crt && openssl x509 -in /tmp/ca.crt -inform der -outform pem -out /etc/openvpn/ca.crt
+
+#generate a private key, place it where the config expects it, and output a CSR for us to sign
+openssl req -newkey rsa:2048 -keyout /etc/openvpn/client.key -nodes -subj "/CN=`hostname`" 2> /dev/null
+
+#make sure only root can read the private key
+chmod 400 /etc/openvpn/client.key
+
+#place the signed openvpn server certificate where the config expects it
+cat << EOF > /etc/openvpn/client.crt
+<PASTE YOUR CLIENT CERTIFICATE HERE>
+EOF
+
+#write the openvpn client config
+cat << EOF > /etc/openvpn/client.conf
+#ovpn config file
+client
+proto udp
+remote openvpn.lyas.dev
+port 11194
+#data-ciphers AES-256-GCM
+auth-nocache
+remote-cert-tls server
+dev tun
+nobind
+ping 15
+persist-key
+persist-tun
+key-direction 1
+cert client.crt
+key client.key
+ca ca.crt
+EOF
+
+#start the openvpn server
+systemctl restart openvpn@client
+
+#check the status of the openvpn server
+systemctl status openvpn@client
+
+#make sure the openvpn server starts at boot
+systemctl enable openvpn@client
