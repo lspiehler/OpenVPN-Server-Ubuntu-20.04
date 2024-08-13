@@ -2,7 +2,7 @@
 #https://community.openvpn.net/openvpn/wiki/OpenvpnSoftwareRepos
 
 #download ca
-wget https://certs.pkiaas.io/foCXVyqkHc/LoxicomOpenVPNRootCA.crt -O /tmp/ca.crt && openssl x509 -in /tmp/ca.crt -inform der -outform pem -out /etc/openvpn/ca.crt
+wget https://certs.pkiaas.io/$caid/OpenVPNDemo.crt -O /tmp/ca.crt && openssl x509 -in /tmp/ca.crt -inform der -outform pem -out /etc/openvpn/ca.crt
 
 #generate a private key, place it where the config expects it, and output a CSR for us to sign
 openssl req -newkey rsa:2048 -keyout /etc/openvpn/client.key -nodes -subj "/CN=`hostname`" 2> /dev/null
